@@ -243,18 +243,26 @@ let data={};
 
 async function load(){
   try{
-    const r = await window.storage.get(STORAGE_KEY);
-    data = r ? JSON.parse(r.value) : {};
-  }catch(e){
-    data = {};
-  }
+    if(window.storage?.get){
+      const r=await window.storage.get(STORAGE_KEY);
+      if(r?.value){data=JSON.parse(r.value);localStorage.setItem(STORAGE_KEY,JSON.stringify(data));return;}
+    }
+  }catch(e){console.warn("クラウド保存を読み込めませんでした",e);}
+  try{data=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}catch(e){data={};}
 }
 async function save(){
-  try{
-    await window.storage.set(STORAGE_KEY, JSON.stringify(data));
-  }catch(e){
-    console.error("保存に失敗しました", e);
-  }
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  try{if(window.storage?.set)await window.storage.set(STORAGE_KEY,JSON.stringify(data));}
+  catch(e){console.warn("クラウド保存に失敗しました",e);}
+}
+function recordTrainingAI(){
+  const key="training_ai_records";
+  const records=JSON.parse(localStorage.getItem(key)||"[]");
+  const d=new Date();
+  const date=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  records.push({id:Date.now()+Math.random(),date,part:"脚",intensity:"重め",source:"LEG&CORE"});
+  records.push({id:Date.now()+Math.random(),date,part:"体幹",intensity:"重め",source:"LEG&CORE"});
+  localStorage.setItem(key,JSON.stringify(records));
 }
 function dateKey(d=new Date()){return d.toISOString().slice(0,10)}
 
@@ -383,6 +391,7 @@ function advanceAfterRest(){
 
 function finishWorkout(){
   data[dateKey()]=true; save();
+  recordTrainingAI();
   document.getElementById("workout").classList.add("hidden");
   document.getElementById("restScreen").classList.add("hidden");
   document.getElementById("finish").classList.remove("hidden");
